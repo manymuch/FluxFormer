@@ -27,6 +27,9 @@ class Fluxnet(Dataset):
         self.sparse = []
         self.sparse_max = []
         self.sparse_min = []
+        self.le_all = []
+        self.site_names = []
+        self.site_dates = []
         print("Loading data...")
         for line in lines:
             print(line)
@@ -37,13 +40,21 @@ class Fluxnet(Dataset):
                 site_date = site[site['Date'] == date]
                 inputs = site_date[['VPD_F', 'TA_F', 'PA_F', 'WS_F', 'P_F', 'LW_IN_F', 'SW_IN_F']]
                 inputs = self.gaussify_input(inputs).to_numpy()
-                sparse = site_date["LE_F_MDS"].to_numpy()[[4, 22, 28, 47]]
+                # inputs = inputs.reshape(6, -1, 7)
+                # inputs = np.mean(inputs, axis=0)
+                # inputs[:, 4] *= 6
+                inputs = inputs[[3, 9, 15, 21, 27, 33, 39, 45], :]
+                le_all = site_date["LE_F_MDS"].to_numpy().astype(np.float32)
+                sparse = le_all[[3, 21, 27, 45]]
+                self.le_all.append(le_all)
                 self.samples.append(inputs.astype(np.float32))
                 sparse = sparse.astype(np.float32)
                 max_LE = np.asarray([np.max(sparse)])
                 min_LE = np.asarray([np.min(sparse)])
                 self.sparse_max.append(max_LE)
                 self.sparse_min.append(min_LE)
+                self.site_names.append(line.split('.')[0])
+                self.site_dates.append(date)
                 # sparse = (sparse - min_LE) / ((max_LE - min_LE) + 1e-2)
                 self.sparse.append(sparse)
                 target_array = site_date["LE_F_MDS"].to_numpy()
@@ -82,15 +93,20 @@ class Fluxnet(Dataset):
         sample['sparse'] = self.sparse[idx]
         sample['sparse_max'] = self.sparse_max[idx]
         sample['sparse_min'] = self.sparse_min[idx]
+        sample["le_all"] = self.le_all[idx]
+        if not self.is_train:
+            sample["site_name"] = self.site_names[idx]
+            sample["site_date"] = self.site_dates[idx]
         return sample
 
 
 if __name__ == '__main__':
     rootdir = "/home/zmj/FluxFormer/data"
-    slit_file = "/home/zmj/FluxFormer/split/debug.txt"
+    slit_file = "/home/zmj/FluxFormer/split_corrected/debug.txt"
     dataset = Fluxnet(root_dir=rootdir, split_file=slit_file, is_train=True)
-    dataloader = DataLoader(dataset, batch_size=2, shuffle=True, num_workers=1)
+    dataloader = DataLoader(dataset, batch_size=2, shuffle=True, num_workers=10)
     print(len(dataset))
+    exit()
     for i_batch, sample_batched in enumerate(dataloader):
         print(i_batch, sample_batched['inputs'].dtype, sample_batched['target'])
         exit()

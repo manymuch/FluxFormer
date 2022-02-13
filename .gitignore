@@ -6,3 +6,5 @@ wandb
 *.log
 split
 split_corrected
+tmp
+.vscode
