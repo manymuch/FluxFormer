@@ -1,6 +1,5 @@
 import torch
 from torch import nn
-from torch.nn import MSELoss
 from torch.nn import L1Loss as MAELoss
 from torch.nn import functional as F
 
