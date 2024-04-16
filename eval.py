@@ -125,19 +125,7 @@ rootdir = "/home/mijun/Code/jiaxin/FluxFormer"
 data_dir = join(rootdir, "data")
 output_dir = join(rootdir, "output")
 pathlib.Path(output_dir).mkdir(parents=True, exist_ok=True)
-# splits = ["FLX_IT-SR2.csv"]
-splits = [
-    "FLX_AU-Ade.csv",
-    "FLX_CA-Obs.csv",
-    "FLX_DE-Gri.csv",
-    "FLX_IT-Col.csv",
-    "FLX_US-ARM.csv",
-    "FLX_US-WCr.csv",
-    "FLX_RU-Cok.csv",
-    "FLX_JP-SMF.csv",
-    "FLX_CH-Fru.csv",
-    "FLX_FR-LBr.csv"
-]
+splits = ["FLX_IT-SR2.csv"]
 
 ffi = FluxFormerInfer(model_path, data_dir)
 for split in tqdm(splits):
