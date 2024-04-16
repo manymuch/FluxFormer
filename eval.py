@@ -119,7 +119,7 @@ class FluxFormerInfer:
 
 
 # Load model
-model_path = "checkpoints/fluxAttention_60.pth"
+model_path = "checkpoints/fluxAttention.pth"
 # Prepare dataset
 rootdir = "/home/mijun/Code/jiaxin/FluxFormer"
 data_dir = join(rootdir, "data")

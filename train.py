@@ -1,5 +1,6 @@
 import argparse
 from os.path import join
+import pathlib
 import torch
 from loss import r2_loss, corr_coeff, MAELoss
 import torch.optim as optim
@@ -162,6 +163,7 @@ def main():
         if epoch % 5 == 0:
             test(args, model, device, val_dataloader, epoch)
     # save_model
+    pathlib.Path("checkpoints").mkdir(parents=True, exist_ok=True)
     ckpt_path = "checkpoints/fluxAttention.pth"
     torch.save(model.state_dict(), ckpt_path)
 
