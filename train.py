@@ -134,17 +134,19 @@ def main():
 
     args = parser.parse_args()
     wandb.config.update(args)
-    device = torch.device("cuda")
+    device = torch.device("cuda") if torch.cuda.is_available() else torch.device("cpu")
 
     rootdir = "/home/mijun/Code/jiaxin/FluxFormer"
     data_dir = join(rootdir, "data")
     train_split = read_split(join(rootdir, "split", args.train_split))
+    print("Loading training data...")
     train_dataset = Fluxnet(
         root_dir=data_dir, site_csv_names=train_split, is_train=True)
     train_dataloader = DataLoader(
         train_dataset, batch_size=args.batchsize, shuffle=True, num_workers=2, drop_last=True)
 
     val_split = read_split(join(rootdir, "split", args.test_split))
+    print("Loading validation data...")
     val_dataset = Fluxnet(
         root_dir=data_dir, site_csv_names=val_split, is_train=False)
     val_dataloader = DataLoader(
@@ -156,6 +158,7 @@ def main():
     scheduler = optim.lr_scheduler.MultiStepLR(
         optimizer, milestones=args.lr_milestone, gamma=args.lr_gamma)
     loss_function = MAELoss()
+    print("Start training...")
     for epoch in tqdm(range(1, args.epochs + 1)):
         train(args, model, device, train_dataloader,
               optimizer, epoch, loss_function)

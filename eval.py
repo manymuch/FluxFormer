@@ -7,12 +7,11 @@ from dataset import Fluxnet
 import numpy as np
 import cv2
 import pandas as pd
-from tqdm import tqdm
 
 
 class FluxFormerInfer:
     def __init__(self, model_path, data_dir):
-        self.device = torch.device("cuda")
+        self.device = torch.device("cuda") if torch.cuda.is_available() else torch.device("cpu")
         self.model = FluxAttention()
         self.model.to(self.device)
         self.model.load_state_dict(torch.load(model_path))
@@ -32,10 +31,11 @@ class FluxFormerInfer:
     def visualize_attention(self, attention_weights):
         attention_day = attention_weights.mean(axis=0)
         attention_day = attention_day.reshape(7, 8)
+        attention_day = np.abs(attention_day)
         normed_attention = (attention_day - np.min(attention_day)) / \
             (np.max(attention_day) - np.min(attention_day) + 1e-3)
         heatmap = cv2.applyColorMap(
-            np.uint8(255 * normed_attention), cv2.COLORMAP_HOT)
+            np.uint8(255 * normed_attention), cv2.COLORMAP_JET)
         heatmap = cv2.resize(heatmap, (0, 0), fx=16, fy=16,
                              interpolation=cv2.INTER_NEAREST)
         return heatmap
@@ -76,11 +76,17 @@ class FluxFormerInfer:
                 normed_output = normed_output.squeeze().detach().cpu().numpy()
                 normed_target = normed_target.squeeze().detach().cpu().numpy()
 
-                df = pd.concat([df, pd.DataFrame(
-                    {"date": site_date,
-                     "LE_predict": output, "LE_measure": target,
-                     "norm_LE_predict": normed_output, "norm_LE_measure": normed_target
-                     })], ignore_index=True)
+                # Create a new DataFrame for concatenation
+                new_data = pd.DataFrame({
+                    "date": site_date,
+                    "LE_predict": output,
+                    "LE_measure": target,
+                    "norm_LE_predict": normed_output,
+                    "norm_LE_measure": normed_target
+                })
+                new_data = new_data.dropna(axis=1, how='all')
+                df = df.dropna(axis=1, how='all')
+                df = pd.concat([df, new_data], ignore_index=True)
 
         df = df.sort_values(by="date")
         attention_map = np.concatenate(self.attention_map, axis=0)
@@ -125,10 +131,21 @@ rootdir = "/home/mijun/Code/jiaxin/FluxFormer"
 data_dir = join(rootdir, "data")
 output_dir = join(rootdir, "output")
 pathlib.Path(output_dir).mkdir(parents=True, exist_ok=True)
-splits = ["FLX_IT-SR2.csv"]
+splits = ["FLX_IT-SR2.csv",
+            # "FLX_AU-Ade.csv",
+            # "FLX_CA-Obs.csv",
+            # "FLX_DE-Gri.csv",
+            # "FLX_IT-Col.csv",
+            # "FLX_US-ARM.csv",
+            # "FLX_US-WCr.csv",
+            # "FLX_RU-Cok.csv",
+            # "FLX_JP-SMF.csv",
+            # "FLX_CH-Fru.csv",
+            # "FLX_FR-LBr.csv"
+            ]
 
 ffi = FluxFormerInfer(model_path, data_dir)
-for split in tqdm(splits):
+for split in splits:
     site_name = split.split(".")[0]
 
     df, attention_map = ffi.infer_site(split)

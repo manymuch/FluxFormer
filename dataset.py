@@ -23,7 +23,6 @@ class Fluxnet(Dataset):
         self.is_train = is_train
         self.transform = transform
         self.num_workers = num_workers
-        print("Loading data...")
         results = process_map(self.process_file, site_csv_names, max_workers=self.num_workers, chunksize=1)
 
         # Unpack results
@@ -139,7 +138,7 @@ if __name__ == '__main__':
                             shuffle=True, num_workers=10)
     print(len(dataset))
     data_list = []
-    for sample_batched in tqdm(dataloader):
+    for sample_batched in dataloader:
         data_list.append(sample_batched)
     with open(output_pickle_file, 'wb') as file:
         pickle.dump(data_list, file)
