@@ -43,4 +43,13 @@ pip install -r requirements.txt
     ```bash
     python eval.py
     ```
-    The results and attention map visualization will be saved in ``output`` dir.
+    The results and attention map visualization will be saved in ``output`` dir.  
+
+    To visualize the attention map, modify the pytorch source code in:  
+    ``/home/user/.local/lib/python3.xx/site-packages/torch/nn/modules/transformer.py``  
+    Find the ``TransformerDecoderLayer`` Class and in the ``_mha_block`` function,  
+    Change ``need_weights=False`` to ``need_weights=True``.  
+    Then run the eval.py with visualization on:  
+    ```bash
+    python eval.py --vis
+    ```

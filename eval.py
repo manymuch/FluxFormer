@@ -1,3 +1,4 @@
+import argparse
 from os.path import join
 import pathlib
 import torch
@@ -10,14 +11,17 @@ import pandas as pd
 
 
 class FluxFormerInfer:
-    def __init__(self, model_path, data_dir):
-        self.device = torch.device("cuda") if torch.cuda.is_available() else torch.device("cpu")
+    def __init__(self, model_path, data_dir, vis_attention=False):
+        self.device = torch.device(
+            "cuda") if torch.cuda.is_available() else torch.device("cpu")
         self.model = FluxAttention()
         self.model.to(self.device)
         self.model.load_state_dict(torch.load(model_path))
         self.model.eval()
-        self.model.decoder.layers[0].multihead_attn.register_forward_hook(
-            self.attention_hook)
+        self.vis_attention = vis_attention
+        if vis_attention:
+            self.model.decoder.layers[0].multihead_attn.register_forward_hook(
+                self.attention_hook)
         self.data_dir = data_dir
 
     def attention_hook(self, model, input, output):
@@ -89,8 +93,11 @@ class FluxFormerInfer:
                 df = pd.concat([df, new_data], ignore_index=True)
 
         df = df.sort_values(by="date")
-        attention_map = np.concatenate(self.attention_map, axis=0)
-        return df, attention_map
+        if self.vis_attention:
+            attention_map = np.concatenate(self.attention_map, axis=0)
+            return df, attention_map
+        else:
+            return df, None
 
     def add_texts(self, image):
         row_texts = ['VPD', 'TA', 'PA', 'WS', 'P', 'LW_IN', 'SW_IN']
@@ -117,57 +124,71 @@ class FluxFormerInfer:
     def get_statistic(self, prediction, measurement):
         residual = prediction - measurement
         residual_square = residual**2
-        R2 = 1 - residual_square.sum() / measurement.var() / measurement.shape[0]
+        R2 = 1 - residual_square.sum() / measurement.var() / \
+            measurement.shape[0]
         RMSE = residual_square.mean()**0.5
         MB = residual.mean()
         result = {"R2": R2, "RMSE": RMSE, "MB": MB}
         return result
 
 
-# Load model
-model_path = "checkpoints/fluxAttention.pth"
-# Prepare dataset
-rootdir = "/home/mijun/Code/jiaxin/FluxFormer"
-data_dir = join(rootdir, "data")
-output_dir = join(rootdir, "output")
-pathlib.Path(output_dir).mkdir(parents=True, exist_ok=True)
-splits = ["FLX_IT-SR2.csv",
-            # "FLX_AU-Ade.csv",
-            # "FLX_CA-Obs.csv",
-            # "FLX_DE-Gri.csv",
-            # "FLX_IT-Col.csv",
-            # "FLX_US-ARM.csv",
-            # "FLX_US-WCr.csv",
-            # "FLX_RU-Cok.csv",
-            # "FLX_JP-SMF.csv",
-            # "FLX_CH-Fru.csv",
-            # "FLX_FR-LBr.csv"
-            ]
+def main():
+    parser = argparse.ArgumentParser(description='PyTorch FLUXNET')
+    parser.add_argument('--vis', default=False,
+                        action=argparse.BooleanOptionalAction)
+    args = parser.parse_args()
 
-ffi = FluxFormerInfer(model_path, data_dir)
-for split in splits:
-    site_name = split.split(".")[0]
+    # Load model
+    model_path = "checkpoints/fluxAttention.pth"
+    # Prepare dataset
+    rootdir = "/home/mijun/Code/jiaxin/FluxFormer"
+    data_dir = join(rootdir, "data")
+    output_dir = join(rootdir, "output")
+    pathlib.Path(output_dir).mkdir(parents=True, exist_ok=True)
+    splits = ["FLX_IT-SR2.csv",
+              # "FLX_AU-Ade.csv",
+              # "FLX_CA-Obs.csv",
+              # "FLX_DE-Gri.csv",
+              # "FLX_IT-Col.csv",
+              # "FLX_US-ARM.csv",
+              # "FLX_US-WCr.csv",
+              # "FLX_RU-Cok.csv",
+              # "FLX_JP-SMF.csv",
+              # "FLX_CH-Fru.csv",
+              # "FLX_FR-LBr.csv"
+              ]
 
-    df, attention_map = ffi.infer_site(split)
+    vis_attention = args.vis
+    ffi = FluxFormerInfer(model_path, data_dir, vis_attention=vis_attention)
+    for split in splits:
+        site_name = split.split(".")[0]
 
-    # get statistic
-    prediction = df["LE_predict"].values
-    measurement = df["LE_measure"].values
-    statistic = ffi.get_statistic(prediction, measurement)
+        df, attention_map = ffi.infer_site(split)
 
-    # vis attention
-    attention_heatmap = ffi.visualize_attention(attention_map)
-    attention_heatmap = ffi.add_texts(attention_heatmap)
-    heatmap_name = join(output_dir, f"{site_name}.png")
-    cv2.imwrite(heatmap_name, attention_heatmap)
+        # get statistic
+        prediction = df["LE_predict"].values
+        measurement = df["LE_measure"].values
+        statistic = ffi.get_statistic(prediction, measurement)
 
-    # save csv
-    csv_name = join(output_dir, split)
-    df["R2"] = ""
-    df["RMSE"] = ""
-    df["MB"] = ""
-    df.loc[0, "R2"] = statistic["R2"]
-    df.loc[0, "RMSE"] = statistic["RMSE"]
-    df.loc[0, "MB"] = statistic["MB"]
-    df.to_csv(csv_name, index=False)
-    print(f"{site_name}, R2: {statistic['R2']:.02f}, RMSE: {statistic['RMSE']:.02f}, MB: {statistic['MB']:.02f}")
+        # vis attention
+        if vis_attention:
+            attention_heatmap = ffi.visualize_attention(attention_map)
+            attention_heatmap = ffi.add_texts(attention_heatmap)
+            heatmap_name = join(output_dir, f"{site_name}.png")
+            cv2.imwrite(heatmap_name, attention_heatmap)
+
+        # save csv
+        csv_name = join(output_dir, split)
+        df["R2"] = ""
+        df["RMSE"] = ""
+        df["MB"] = ""
+        df.loc[0, "R2"] = statistic["R2"]
+        df.loc[0, "RMSE"] = statistic["RMSE"]
+        df.loc[0, "MB"] = statistic["MB"]
+        df.to_csv(csv_name, index=False)
+        print(
+            f"{site_name}, R2: {statistic['R2']:.02f}, RMSE: {statistic['RMSE']:.02f}, MB: {statistic['MB']:.02f}")
+
+
+if __name__ == '__main__':
+    main()
