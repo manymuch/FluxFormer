@@ -11,7 +11,7 @@ import wandb
 from tqdm import tqdm
 wandb.init(project="FluxNet",
            entity="jiaxin-zhang",
-           name="FluxFormer_small_1e5",
+           name="FluxFormer_example",
            tags=[])
 
 
@@ -122,7 +122,7 @@ def main():
     parser = argparse.ArgumentParser(description='PyTorch FLUXNET')
     parser.add_argument('--batchsize', type=int, default=128, metavar='N')
     parser.add_argument('--epochs', type=int, default=60, metavar='N')
-    parser.add_argument('--lr', type=float, default=1e-5, metavar='LR')
+    parser.add_argument('--lr', type=float, default=1e-4, metavar='LR')
     parser.add_argument('--lr_gamma', type=float, default=0.2, metavar='LRG')
     parser.add_argument('--lr_milestone', nargs="+",
                         type=int, default=[50, 55], metavar='LRM')

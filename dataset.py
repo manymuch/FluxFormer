@@ -67,9 +67,16 @@ class Fluxnet(Dataset):
             inputs = self.gaussify_input(inputs).to_numpy()
             inputs = inputs[[3, 9, 15, 21, 27, 33, 39, 45], :]
             le_all = site_date["LE_F_MDS"].to_numpy().astype(np.float32)
-            sparse = le_all[[3, 21, 27, 45]]
-            max_LE = np.asarray([np.max(sparse)])
-            min_LE = np.asarray([np.min(sparse)])
+
+            # choice A: use only one LE observation per day
+            sparse = le_all[[21, 21, 21, 21]]
+            max_LE = np.asarray([500.], dtype=np.float32)
+            min_LE = np.asarray([-50.], dtype=np.float32)
+
+            # choice B: use 4 LE observations per day
+            # sparse = le_all[[3, 21, 27, 45]]
+            # max_LE = np.asarray([np.max(le_all[[3, 21, 27, 45]])])
+            # min_LE = np.asarray([np.min(le_all[[3, 21, 27, 45]])])
 
             result['le_all'].append(le_all)
             result['samples'].append(inputs.astype(np.float32))
@@ -131,11 +138,12 @@ class Fluxnet(Dataset):
 
 if __name__ == '__main__':
     rootdir = "/home/zmj/FluxFormer/data"
-    slit_file = "/home/zmj/FluxFormer/split_corrected/train.txt"
+    split_file = "/home/zmj/FluxFormer/split_corrected/debug.txt"
+    with open(split_file, "r") as f:
+        debug_split = f.readlines()
     output_pickle_file = "/home/zmj/FluxFormer/data_pickle/train.pkl"
-    dataset = Fluxnet(root_dir=rootdir, split_file=slit_file, is_train=True)
-    dataloader = DataLoader(dataset, batch_size=1,
-                            shuffle=True, num_workers=10)
+    dataset = Fluxnet(root_dir=rootdir, site_csv_names=debug_split, is_train=True)
+    dataloader = DataLoader(dataset, batch_size=1, shuffle=True, num_workers=1)
     print(len(dataset))
     data_list = []
     for sample_batched in dataloader:
